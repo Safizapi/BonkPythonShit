@@ -1,3 +1,7 @@
+import base64
+from lzstring import LZString
+
+
 def decode_bonk_map(encoded_map) -> dict:
     map_data = {}
     reader = ByteReader(base64.b64decode(LZString.decompressFromEncodedURIComponent(encoded_map)))
