@@ -1,312 +1,360 @@
 import base64
 from lzstring import LZString
 
+from byte_buffer import ByteBuffer
+
 
 def decode_bonk_map(encoded_map) -> dict:
-    map_data = {}
-    reader = ByteReader(base64.b64decode(LZString.decompressFromEncodedURIComponent(encoded_map)))
+    map_data = {
+        "v": 1,
+        "s": {
+            "re": False,
+            "nc": False,
+            "pq": 1,
+            "gd": 25.0,
+            "fl": False
+        },
+        "physics": {
+            "shapes": [],
+            "fixtures": [],
+            "bodies": [],
+            "bro": [],
+            "joints": [],
+            "ppm": 12
+        },
+        "spawns": [],
+        "capZones": [],
+        "m": {
+            "a": "nob_author",
+            "n": "nob_name",
+            "dbv": 2,
+            "dbid": -1,
+            "authid": -1,
+            "date": "",
+            "rxid": 0,
+            "rxn": "",
+            "rxa": "",
+            "rxdb": 1,
+            "cr": [],
+            "pub": False,
+            "mo": ""
+        }
+    }
+    byte_buffer = ByteBuffer(base64.b64decode(LZString.decompressFromEncodedURIComponent(encoded_map)))
 
-    map_data["physics"] = {}
     physics = map_data["physics"]
-    map_data["version"] = reader.read_short()
+    map_data["v"] = byte_buffer.read_short()
 
-    if map_data["version"] > 61:
-        raise ValueError("Future map version, please refresh page")
+    if map_data["v"] > 61:
+        raise ValueError("Future map version")
 
-    map_data["settings"] = {
-        "re": reader.read_boolean(),
-        "nc": reader.read_boolean()
-    }
+    map_data["s"]["re"] = byte_buffer.read_boolean()
+    map_data["s"]["nc"] = byte_buffer.read_boolean()
 
-    if map_data["version"] >= 3:
-        map_data["settings"]["pq"] = reader.read_short()
+    if map_data["v"] >= 3:
+        map_data["s"]["pq"] = byte_buffer.read_short()
 
-    if 4 <= map_data["version"] <= 12:
-        map_data["settings"]["gd"] = reader.read_short()
-    elif map_data["version"] >= 13:
-        map_data["settings"]["gd"] = reader.read_float()
+    if 4 <= map_data["v"] <= 12:
+        map_data["s"]["gd"] = byte_buffer.read_short()
+    elif map_data["v"] >= 13:
+        map_data["s"]["gd"] = byte_buffer.read_float()
 
-    if map_data["version"] >= 9:
-        map_data["settings"]["fl"] = reader.read_boolean()
+    if map_data["v"] >= 9:
+        map_data["s"]["fl"] = byte_buffer.read_boolean()
 
-    map_data["metadata"] = {
-        "rxn": reader.read_utf(),
-        "rxa": reader.read_utf(),
-        "rxid": reader.read_uint(),
-        "rxdb": reader.read_short(),
-        "n": reader.read_utf(),
-        "a": reader.read_utf()
-    }
+    map_data["m"]["rxn"] = byte_buffer.read_utf()
+    map_data["m"]["rxa"] = byte_buffer.read_utf()
+    map_data["m"]["rxid"] = byte_buffer.read_uint()
+    map_data["m"]["rxdb"] = byte_buffer.read_short()
+    map_data["m"]["n"] = byte_buffer.read_utf()
+    map_data["m"]["a"] = byte_buffer.read_utf()
 
-    if map_data["version"] >= 10:
-        map_data["metadata"]["vu"] = reader.read_uint()
-        map_data["metadata"]["vd"] = reader.read_uint()
+    if map_data["v"] >= 10:
+        map_data["m"]["vu"] = byte_buffer.read_uint()
+        map_data["m"]["vd"] = byte_buffer.read_uint()
 
-    if map_data["version"] >= 4:
-        cr_count = reader.read_short()
-        map_data["metadata"]["cr"] = [reader.read_utf() for _ in range(cr_count)]
+    if map_data["v"] >= 4:
+        cr_len = byte_buffer.read_short()
+        map_data["m"]["cr"] = [byte_buffer.read_utf() for _ in range(cr_len)]
 
-    if map_data["version"] >= 5:
-        map_data["metadata"]["mo"] = reader.read_utf()
-        map_data["metadata"]["dbid"] = reader.read_int()
+    if map_data["v"] >= 5:
+        map_data["m"]["mo"] = byte_buffer.read_utf()
+        map_data["m"]["dbid"] = byte_buffer.read_int()
 
-    if map_data["version"] >= 7:
-        map_data["metadata"]["pub"] = reader.read_boolean()
+    if map_data["v"] >= 7:
+        map_data["m"]["pub"] = byte_buffer.read_boolean()
 
-    if map_data["version"] >= 8:
-        map_data["metadata"]["dbv"] = reader.read_int()
+    if map_data["v"] >= 8:
+        map_data["m"]["dbv"] = byte_buffer.read_int()
 
-    physics["ppm"] = reader.read_short()
+    physics["ppm"] = byte_buffer.read_short()
+    bro_len = byte_buffer.read_short()
+    physics["bro"] = [byte_buffer.read_short() for _ in range(bro_len)]
 
-    bro_count = reader.read_short()
-    physics["bro"] = [reader.read_short() for _ in range(bro_count)]
+    shape_len = byte_buffer.read_short()
 
-    # Read shapes
-    shape_count = reader.read_short()
-    physics["shapes"] = []
-
-    for _ in range(shape_count):
-        shape_type = reader.read_short()
-        shape = {}
+    for _ in range(shape_len):
+        shape_type = byte_buffer.read_short()
 
         if shape_type == 1:
-            shape = {
-                "type": "bx",
-                "w": reader.read_double(),
-                "h": reader.read_double(),
-                "c": [reader.read_double(), reader.read_double()],
-                "a": reader.read_double(),
-                "sk": reader.read_boolean()
-            }
+            physics["shapes"].append(
+                {
+                    "type": "bx",
+                    "w": byte_buffer.read_double(),
+                    "h": byte_buffer.read_double(),
+                    "c": [byte_buffer.read_double(), byte_buffer.read_double()],
+                    "a": byte_buffer.read_double(),
+                    "sk": byte_buffer.read_boolean()
+                }
+            )
         elif shape_type == 2:
-            shape = {
-                "type": "ci",
-                "r": reader.read_double(),
-                "c": [reader.read_double(), reader.read_double()],
-                "sk": reader.read_boolean()
-            }
+            physics["shapes"].append(
+                {
+                    "type": "ci",
+                    "r": byte_buffer.read_double(),
+                    "c": [byte_buffer.read_double(), byte_buffer.read_double()],
+                    "sk": byte_buffer.read_boolean()
+                }
+            )
         elif shape_type == 3:
             shape = {
                 "type": "po",
-                "s": reader.read_double(),
-                "a": reader.read_double(),
-                "c": [reader.read_double(), reader.read_double()],
+                "v": [],
+                "s": byte_buffer.read_double(),
+                "a": byte_buffer.read_double(),
+                "c": [byte_buffer.read_double(), byte_buffer.read_double()],
             }
 
-            vertex_count = reader.read_short()
-            shape["v"] = [[reader.read_double(), reader.read_double()] for _ in range(vertex_count)]
+            vertex_count = byte_buffer.read_short()
+            shape["v"] = [[byte_buffer.read_double(), byte_buffer.read_double()] for _ in range(vertex_count)]
 
-        physics["shapes"].append(shape)
+            physics["shapes"].append(shape)
 
-    # Read fixtures
-    fixture_count = reader.read_short()
-    physics["fixtures"] = []
+    fix_count = byte_buffer.read_short()
 
-    for _ in range(fixture_count):
+    for _ in range(fix_count):
         fixture = {
-            "sh": reader.read_short(),
-            "n": reader.read_utf(),
-            "fr": reader.read_double(),
-            "re": reader.read_double(),
-            "de": reader.read_double(),
-            "f": reader.read_uint(),
-            "d": reader.read_boolean(),
-            "np": reader.read_boolean()
+            "sh": byte_buffer.read_short(),
+            "n": byte_buffer.read_utf(),
+            "fr": byte_buffer.read_double(),
+            "fp": None,
+            "re": 0.8,
+            "de": 0.3,
+            "f": 0x4F7CAC,
+            "d": False,
+            "np": False,
+            "ng": False
         }
 
-        if fixture["fr"] == float("inf"):
+        if fixture["fr"] == 1.7976931348623157e+308:
             fixture["fr"] = None
 
-        fp_type = reader.read_short()
-        fixture["fp"] = None if fp_type == 0 else (False if fp_type == 1 else True)
+        fp = byte_buffer.read_short()
 
-        if fixture["re"] == float("inf"):
+        if fp == 0:
+            fixture["fp"] = None
+        elif fp == 1:
+            fixture["fp"] = False
+        elif fp == 2:
+            fixture["fp"] = True
+
+        fixture["re"] = byte_buffer.read_double()
+        fixture["de"] = byte_buffer.read_double()
+
+        if fixture["re"] == 1.7976931348623157e+308:
             fixture["re"] = None
 
-        if fixture["de"] == float("inf"):
+        if fixture["de"] == 1.7976931348623157e+308:
             fixture["de"] = None
 
-        if map_data["version"] >= 11:
-            fixture["ng"] = reader.read_boolean()
+        fixture["f"] = byte_buffer.read_uint()
+        fixture["d"] = byte_buffer.read_boolean()
+        fixture["np"] = byte_buffer.read_boolean()
 
-        if map_data["version"] >= 12:
-            fixture["ig"] = reader.read_boolean()
+        if map_data["v"] >= 11:
+            fixture["ng"] = byte_buffer.read_boolean()
+
+        if map_data["v"] >= 12:
+            fixture["ig"] = byte_buffer.read_boolean()
 
         physics["fixtures"].append(fixture)
 
-    # Read bodies
-    body_count = reader.read_short()
-    physics["bodies"] = []
+    body_len = byte_buffer.read_short()
 
-    for _ in range(body_count):
+    for _ in range(body_len):
         body = {
-            "s": {
-                "type": reader.read_utf(),
-                "n": reader.read_utf(),
-                "fric": reader.read_double(),
-                "fricp": reader.read_boolean(),
-                "re": reader.read_double(),
-                "de": reader.read_double(),
-                "ld": reader.read_double(),
-                "ad": reader.read_double(),
-                "fr": reader.read_boolean(),
-                "bu": reader.read_boolean(),
-                "f_c": reader.read_short(),
-                "f_1": reader.read_boolean(),
-                "f_2": reader.read_boolean(),
-                "f_3": reader.read_boolean(),
-                "f_4": reader.read_boolean()
-            },
-            "p": [reader.read_double(), reader.read_double()],
-            "a": reader.read_double(),
-            "lv": [reader.read_double(), reader.read_double()],
-            "av": reader.read_double(),
+            "p": [0.0, 0.0],
+            "a": 0,
+            "lv": [0, 0],
+            "av": 0,
             "cf": {
-                "x": reader.read_double(),
-                "y": reader.read_double(),
-                "ct": reader.read_double(),
-                "w": reader.read_boolean()
+                "x": 0.0,
+                "y": 0.0,
+                "w": True,
+                "ct": 0.0
             },
-            "fx": []
+            "fx": [],
+            "fz": {
+                "on": False,
+                "x": 0.0,
+                "y": 0.0,
+                "d": True,
+                "p": True,
+                "a": True,
+                "t": 0,
+                "cf": 0.0
+            },
+            "s": {
+                "type": "s",
+                "n": "Unnamed",
+                "fric": 0.3,
+                "fricp": False,
+                "re": 0.8,
+                "de": 0.3,
+                "ld": 0,
+                "ad": 0,
+                "fr": False,
+                "bu": False,
+                "f_c": 1,
+                "f_p": True,
+                "f_1": True,
+                "f_2": True,
+                "f_3": True,
+                "f_4": True
+            }
         }
 
-        if map_data["version"] >= 2:
-            body["s"]["f_p"] = reader.read_boolean()
+        body["s"]["type"] = byte_buffer.read_utf()
+        body["s"]["n"] = byte_buffer.read_utf()
+        body["p"] = [byte_buffer.read_double(), byte_buffer.read_double()]
+        body["a"] = byte_buffer.read_double()
+        body["s"]["fric"] = byte_buffer.read_double()
+        body["s"]["fricp"] = byte_buffer.read_boolean()
+        body["s"]["re"] = byte_buffer.read_double()
+        body["s"]["de"] = byte_buffer.read_double()
+        body["lv"] = [byte_buffer.read_double(), byte_buffer.read_double()]
+        body["av"] = byte_buffer.read_double()
+        body["s"]["ld"] = byte_buffer.read_double()
+        body["s"]["ad"] = byte_buffer.read_double()
+        body["s"]["fr"] = byte_buffer.read_boolean()
+        body["s"]["bu"] = byte_buffer.read_boolean()
+        body["cf"]["x"] = byte_buffer.read_double()
+        body["cf"]["y"] = byte_buffer.read_double()
+        body["cf"]["ct"] = byte_buffer.read_double()
+        body["cf"]["w"] = byte_buffer.read_boolean()
+        body["s"]["f_c"] = byte_buffer.read_short()
+        body["s"]["f_1"] = byte_buffer.read_boolean()
+        body["s"]["f_2"] = byte_buffer.read_boolean()
+        body["s"]["f_3"] = byte_buffer.read_boolean()
+        body["s"]["f_4"] = byte_buffer.read_boolean()
 
-        if map_data["version"] >= 14:
-            body["fz"] = {"on": reader.read_boolean()}
+        if map_data["v"] >= 2:
+            body["s"]["f_p"] = byte_buffer.read_boolean()
+
+        if map_data["v"] >= 14:
+            body["fz"]["on"] = byte_buffer.read_boolean()
 
             if body["fz"]["on"]:
-                body["fz"].update(
-                    {
-                        "x": reader.read_double(),
-                        "y": reader.read_double(),
-                        "d": reader.read_boolean(),
-                        "p": reader.read_boolean(),
-                        "a": reader.read_boolean()
-                    }
-                )
+                body["fz"]["x"] = byte_buffer.read_double()
+                body["fz"]["y"] = byte_buffer.read_double()
+                body["fz"]["d"] = byte_buffer.read_boolean()
+                body["fz"]["p"] = byte_buffer.read_boolean()
+                body["fz"]["a"] = byte_buffer.read_boolean()
 
-                if map_data["version"] >= 15:
-                    body["fz"].update(
-                        {
-                            "t": reader.read_short(),
-                            "cf": reader.read_double()
-                        }
-                    )
+                if map_data["v"] >= 15:
+                    body["fz"]["t"] = byte_buffer.read_short()
+                    body["fz"]["cf"] = byte_buffer.read_double()
 
-        fixture_count = reader.read_short()
-        body["fx"] = [reader.read_short() for _ in range(fixture_count)]
+        fx_len = byte_buffer.read_short()
+
+        for _ in range(fx_len):
+            body["fx"].append(byte_buffer.read_short())
 
         physics["bodies"].append(body)
 
-    # Read spawns
-    spawn_count = reader.read_short()
-    map_data["spawns"] = []
+    spawn_len = byte_buffer.read_short()
 
-    for _ in range(spawn_count):
-        spawn = {
-            "x": reader.read_double(),
-            "y": reader.read_double(),
-            "xv": reader.read_double(),
-            "yv": reader.read_double(),
-            "priority": reader.read_short(),
-            "r": reader.read_boolean(),
-            "f": reader.read_boolean(),
-            "b": reader.read_boolean(),
-            "gr": reader.read_boolean(),
-            "ye": reader.read_boolean(),
-            "n": reader.read_utf()
-        }
-        map_data["spawns"].append(spawn)
+    for _ in range(spawn_len):
+        map_data["spawns"].append(
+            {
+                "x": byte_buffer.read_double(),
+                "y": byte_buffer.read_double(),
+                "xv": byte_buffer.read_double(),
+                "yv": byte_buffer.read_double(),
+                "priority": byte_buffer.read_short(),
+                "r": byte_buffer.read_boolean(),
+                "f": byte_buffer.read_boolean(),
+                "b": byte_buffer.read_boolean(),
+                "gr": byte_buffer.read_boolean(),
+                "ye": byte_buffer.read_boolean(),
+                "n": byte_buffer.read_utf()
+            }
+        )
 
-    # Read capture zones
-    cap_zone_count = reader.read_short()
-    map_data["capZones"] = []
+    cap_zone_len = byte_buffer.read_short()
 
-    for _ in range(cap_zone_count):
+    for _ in range(cap_zone_len):
         cap_zone = {
-            "n": reader.read_utf(),
-            "l": reader.read_double(),
-            "i": reader.read_short()
+            "n": byte_buffer.read_utf(),
+            "l": byte_buffer.read_double(),
+            "i": byte_buffer.read_short()
         }
-        if map_data["version"] >= 6:
-            cap_zone["ty"] = reader.read_short()
+
+        if map_data["v"] >= 6:
+            cap_zone["ty"] = byte_buffer.read_short()
 
         map_data["capZones"].append(cap_zone)
 
-    # Read joints
-    joint_count = reader.read_short()
-    physics["joints"] = []
+    joint_len = byte_buffer.read_short()
 
-    for _ in range(joint_count):
-        joint_type = reader.read_short()
-        joint = {}
+    for _ in range(joint_len):
+        joint_type = byte_buffer.read_short()
+        joint = {"d": {}}
 
         if joint_type == 1:
-            joint = {
-                "type": "revolute",
-                "d": {
-                    "la": reader.read_double(),
-                    "ua": reader.read_double(),
-                    "mmt": reader.read_double(),
-                    "ms": reader.read_double(),
-                    "el": reader.read_boolean(),
-                    "em": reader.read_boolean()
-                },
-                "aa": [reader.read_double(), reader.read_double()]
-            }
+            joint["type"] = "rv"
+            joint["d"]["la"] = byte_buffer.read_double()
+            joint["d"]["ua"] = byte_buffer.read_double()
+            joint["d"]["mmt"] = byte_buffer.read_double()
+            joint["d"]["ms"] = byte_buffer.read_double()
+            joint["d"]["el"] = byte_buffer.read_boolean()
+            joint["d"]["em"] = byte_buffer.read_boolean()
+            joint["aa"] = [byte_buffer.read_double(), byte_buffer.read_double()]
         elif joint_type == 2:
-            joint = {
-                "type": "distance",
-                "d": {
-                    "fh": reader.read_double(),
-                    "dr": reader.read_double()
-                },
-                "aa": [reader.read_double(), reader.read_double()],
-                "ab": [reader.read_double(), reader.read_double()]
-            }
+            joint["type"] = "d"
+            joint["d"]["fh"] = byte_buffer.read_double()
+            joint["d"]["dr"] = byte_buffer.read_double()
+            joint["aa"] = [byte_buffer.read_double(), byte_buffer.read_double()]
+            joint["ab"] = [byte_buffer.read_double(), byte_buffer.read_double()]
         elif joint_type == 3:
-            joint = {
-                "type": "prismatic",
-                "pax": reader.read_double(),
-                "pay": reader.read_double(),
-                "pa": reader.read_double(),
-                "pf": reader.read_double(),
-                "pl": reader.read_double(),
-                "pu": reader.read_double(),
-                "plen": reader.read_double(),
-                "pms": reader.read_double()
-            }
+            joint["type"] = "lpj"
+            joint["pax"] = byte_buffer.read_double()
+            joint["pay"] = byte_buffer.read_double()
+            joint["pa"] = byte_buffer.read_double()
+            joint["pf"] = byte_buffer.read_double()
+            joint["pl"] = byte_buffer.read_double()
+            joint["pu"] = byte_buffer.read_double()
+            joint["plen"] = byte_buffer.read_double()
+            joint["pms"] = byte_buffer.read_double()
         elif joint_type == 4:
-            joint = {
-                "type": "line",
-                "sax": reader.read_double(),
-                "say": reader.read_double(),
-                "sf": reader.read_double(),
-                "slen": reader.read_double()
-            }
+            joint["type"] = "lsj"
+            joint["sax"] = byte_buffer.read_double()
+            joint["say"] = byte_buffer.read_double()
+            joint["sf"] = byte_buffer.read_double()
+            joint["slen"] = byte_buffer.read_double()
         elif joint_type == 5:
-            joint = {
-                "type": "gear",
-                "n": reader.read_utf(),
-                "ja": reader.read_short(),
-                "jb": reader.read_short(),
-                "r": reader.read_double()
-            }
+            joint["type"] = "g"
+            joint["n"] = byte_buffer.read_utf()
+            joint["ja"] = byte_buffer.read_short()
+            joint["jb"] = byte_buffer.read_short()
+            joint["r"] = byte_buffer.read_double()
 
         if joint_type != 5:
-            joint.update(
-                {
-                    "ba": reader.read_short(),
-                    "bb": reader.read_short(),
-                    "d": {
-                        "cc": reader.read_boolean(),
-                        "bf": reader.read_double(),
-                        "dl": reader.read_boolean()
-                    }
-                }
-            )
+            joint["ba"] = byte_buffer.read_short()
+            joint["bb"] = byte_buffer.read_short()
+            joint["d"]["cc"] = byte_buffer.read_boolean()
+            joint["d"]["bf"] = byte_buffer.read_double()
+            joint["d"]["dl"] = byte_buffer.read_boolean()
 
         physics["joints"].append(joint)
 
