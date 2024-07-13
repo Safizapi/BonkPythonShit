@@ -1,11 +1,38 @@
 import struct
 
 
-class ByteReader:
+class ByteBuffer:
     def __init__(self, data: bytes) -> None:
         self.data: bytes = data
         self.position = 0
 
+    # Write methods
+    def write_boolean(self, value: bool) -> None:
+        self.data += value.to_bytes()
+
+    def write_byte(self, value: bytes) -> None:
+        self.data += value
+
+    def write_short(self, value: int) -> None:
+        self.data += struct.pack(">h", value)
+
+    def write_int(self, value: int) -> None:
+        self.data += struct.pack(">i", value)
+
+    def write_uint(self, value: int) -> None:
+        self.data += struct.pack(">I", value)
+
+    def write_float(self, value: float) -> None:
+        self.data += struct.pack(">f", value)
+
+    def write_double(self, value: float) -> None:
+        self.data += struct.pack(">d", value)
+
+    def write_utf(self, value: str) -> None:
+        self.data += struct.pack(">h", len(value))
+        self.data += value.encode()
+
+    # Read methods
     def read_boolean(self) -> bool:
         return self.read_byte() != 0
 
