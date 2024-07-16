@@ -61,6 +61,9 @@ class ByteBuffer:
         self.position += 4
         return value
 
+    def read_padding(self) -> None:
+        self.position += 7
+
     def read_double(self) -> float:
         value = struct.unpack(">d", self.data[self.position:self.position + 8])[0]
         self.position += 8
