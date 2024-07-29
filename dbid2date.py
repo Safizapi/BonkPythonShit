@@ -1,5 +1,6 @@
 import json
 import datetime
+from typing import Union
 
 
 def db_id_to_date(db_id: int) -> Union[datetime.datetime, str]:
