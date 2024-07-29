@@ -1,3 +1,8 @@
+import base64
+from byte_buffer import ByteBuffer
+from urllib.parse import unquote
+
+
 def decode_avatar(avatar: str) -> dict:
     def decode_layer(buffer: ByteBuffer) -> Union[dict, None]:
         layer_data = {}
