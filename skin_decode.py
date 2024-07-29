@@ -1,6 +1,7 @@
 import base64
-from byte_buffer import ByteBuffer
 from urllib.parse import unquote
+
+from byte_buffer import ByteBuffer
 
 
 def decode_avatar(avatar: str) -> dict:
